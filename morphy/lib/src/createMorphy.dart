@@ -27,8 +27,8 @@ String createMorphy(
   //move this into a helper class!
   if (generateJson) {
     sb.writeln(createJsonSingleton(classNameTrim, classGenerics));
-    sb.writeln(createJsonHeader(className, classGenerics, hidePublicConstructor, explicitToJson));
-
+    sb.writeln(createJsonHeader(
+        className, classGenerics, hidePublicConstructor, explicitToJson));
   }
 
   sb.write(getClassDefinition(
@@ -58,6 +58,7 @@ String createMorphy(
     if (allFields.isEmpty) {
       if (!hidePublicConstructor) {
         sb.writeln("${classNameTrim}();");
+        sb.writeln('\n');
       }
       sb.writeln("${classNameTrim}._();");
     } else {
@@ -79,17 +80,22 @@ String createMorphy(
       sb.writeln("${classNameTrim}._({");
       sb.writeln(getConstructorRows(allFields));
       sb.writeln("}) ${getInitializer(allFields)};");
+      sb.writeln('\n');
 
       if (hasConstContructor) {
         sb.writeln("const ${classNameTrim}.constant({");
         sb.writeln(getConstructorRows(allFields));
         sb.writeln("}) ${getInitializer(allFields)};");
+        sb.writeln('\n');
       }
       sb.writeln(getToString(allFields, classNameTrim));
     }
 
+    sb.writeln('\n');
     sb.writeln(getHashCode(allFields));
+    sb.writeln('\n');
     sb.writeln(getEquals(allFields, classNameTrim));
+    sb.writeln('\n');
   }
 //
   var interfacesX = [
@@ -123,7 +129,10 @@ String createMorphy(
     sb.writeln(commentEveryLine(explicitForJson.join("\n").toString()));
     sb.writeln(generateFromJsonHeader(className));
     sb.writeln(generateFromJsonBody(className, classGenerics, explicitForJson));
+    sb.writeln(generateFromJsonLeanHeader(className));
+    sb.writeln(generateFromJsonLeanBody(className));
     sb.writeln(generateToJson(className, classGenerics));
+    sb.writeln(generateToJsonLean(className));
   }
 
   sb.writeln("}");
