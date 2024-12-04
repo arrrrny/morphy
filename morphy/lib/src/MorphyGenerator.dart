@@ -11,14 +11,18 @@ import 'package:morphy/src/createMorphy.dart';
 import 'package:morphy/src/helpers.dart';
 import 'package:morphy_annotation/morphy_annotation.dart';
 import 'package:source_gen/source_gen.dart';
+import 'package:path/path.dart' as p;
 
 class MorphyGenerator<TValueT extends MorphyX>
     extends GeneratorForAnnotationX<TValueT> {
-  // Static maps to store class information across all files
   static final Map<String, ClassElement> _allAnnotatedClasses = {};
   static final Map<String, List<InterfaceType>> _allImplementedInterfaces = {};
   static Map<String, ClassElement> get allAnnotatedClasses =>
       _allAnnotatedClasses;
+
+  @override
+  TypeChecker get typeChecker => TypeChecker.fromRuntime(TValueT);
+
   @override
   FutureOr<String> generate(LibraryReader library, BuildStep buildStep) async {
     // First pass: collect all annotated classes
@@ -30,7 +34,6 @@ class MorphyGenerator<TValueT extends MorphyX>
       }
     }
 
-    // Second pass: generate code
     return super.generate(library, buildStep);
   }
 
@@ -47,43 +50,92 @@ class MorphyGenerator<TValueT extends MorphyX>
       throw Exception("not a class");
     }
 
-    // Verify required imports
-    verifyRequiredImports(element);
+    _allAnnotatedClasses[element.name] = element;
 
-    allAnnotatedClasses[element.name] = element;
+    // Verify required imports
+    verifyRequiredImports(element, buildStep);
 
     var hasConstConstructor = element.constructors.any((e) => e.isConst);
+    var isAbstract = element.name.startsWith("\$\$");
+    var nonSealed = annotation.read('nonSealed').boolValue;
+
+    // If this is implementing a sealed class, verify it's in the same library
+    for (var interface in element.interfaces) {
+      var interfaceName = interface.element.name;
+      // Only check if:
+      // 1. The interface is a sealed class (starts with $$)
+      // 2. This class is a concrete implementation (doesn't start with $)
+      if (interfaceName.startsWith("\$\$") && !element.name.startsWith("\$")) {
+        var sealedLibrary = interface.element.library;
+        var implementationLibrary = element.library;
+
+        // Check if they're in the same library (includes part files)
+        var isSameLibrary = sealedLibrary == implementationLibrary ||
+            implementationLibrary.parts
+                .any((part) => part.library == sealedLibrary) ||
+            sealedLibrary.parts
+                .any((part) => part.library == implementationLibrary);
+
+        if (!isSameLibrary) {
+          throw Exception(
+              'Class ${element.name} must be in the same library as its sealed superclass ${interfaceName}. ' +
+                  'Either move it to the same library or use "part of" directive.');
+        }
+      }
+    }
 
     if (element.supertype?.element.name != "Object") {
       throw Exception("you must use implements, not extends");
     }
 
     var docComment = element.documentationComment;
-    var isAbstract = element.name.startsWith("\$\$");
 
-    // Get all fields including those from implemented interfaces and their subtypes
+    // Collect all interfaces including the inheritance chain
+    var allInterfaces = <InterfaceType>[];
+    var processedInterfaces = <String>{};
+
+    void addInterface(InterfaceType interface) {
+      if (processedInterfaces.contains(interface.element.name)) return;
+      processedInterfaces.add(interface.element.name);
+      allInterfaces.add(interface);
+
+      // Add super interfaces
+      interface.element.interfaces.forEach(addInterface);
+      interface.element.allSupertypes
+          .where((t) => t.element.name != 'Object')
+          .forEach(addInterface);
+    }
+
+    // Process all interfaces
+    element.interfaces.forEach(addInterface);
+
+    var interfaces = allInterfaces.map((e) {
+      var interfaceName = e.element.name;
+      // For $$-prefixed interfaces, use the non-sealed interface class name
+      var implementedName = interfaceName.startsWith("\$\$")
+          ? interfaceName.replaceAll("\$\$", "")
+          : interfaceName.replaceAll("\$", "");
+
+      return InterfaceWithComment(
+        implementedName,
+        e.typeArguments.map(typeToString).toList(),
+        e.element.typeParameters.map((x) => x.name).toList(),
+        e.element.fields
+            .map((e) => NameType(e.name, typeToString(e.type)))
+            .toList(),
+        comment: e.element.documentationComment,
+      );
+    }).toList();
+
+    // Get all fields including those from the entire inheritance chain
     var allFields = getAllFieldsIncludingSubtypes(element);
-
-    var className = element.name;
-    var interfaces = element.interfaces
-        .map((e) => InterfaceWithComment(
-              e.element.name,
-              e.typeArguments.map(typeToString).toList(),
-              e.element.typeParameters.map((x) => x.name).toList(),
-              e.element.fields
-                  .map((e) => NameType(e.name, typeToString(e.type)))
-                  .toList(),
-              comment: e.element.documentationComment,
-            ))
-        .toList();
+    var allFieldsDistinct = getDistinctFields(allFields, interfaces);
 
     var classGenerics = element.typeParameters.map((e) {
       final bound = e.bound;
       return NameTypeClassComment(
           e.name, bound == null ? null : typeToString(bound), null);
     }).toList();
-
-    var allFieldsDistinct = getDistinctFields(allFields, interfaces);
 
     var typesExplicit = <Interface>[];
     if (!annotation.read('explicitSubTypes').isNull) {
@@ -109,22 +161,19 @@ class MorphyGenerator<TValueT extends MorphyX>
       }).toList();
     }
 
-    var allValueTInterfaces = element.interfaces
-        .expand((e) =>
-            [e, ...getAllImplementedInterfaces(e.element as ClassElement)])
-        .map(
-          (e) => Interface.fromGenerics(
-            e.element.name,
-            e.element.typeParameters.map((TypeParameterElement x) {
-              final bound = x.bound;
-              return NameType(
-                  x.name, bound == null ? null : typeToString(bound));
-            }).toList(),
-            getAllFieldsIncludingSubtypes(e.element as ClassElement)
-                .where((x) => x.name != "hashCode")
-                .toList(),
-          ),
-        )
+    // Process all interfaces including the inheritance chain
+    var allValueTInterfaces = allInterfaces
+        .map((e) => Interface.fromGenerics(
+              e.element.name,
+              e.element.typeParameters.map((TypeParameterElement x) {
+                final bound = x.bound;
+                return NameType(
+                    x.name, bound == null ? null : typeToString(bound));
+              }).toList(),
+              getAllFieldsIncludingSubtypes(e.element as ClassElement)
+                  .where((x) => x.name != "hashCode")
+                  .toList(),
+            ))
         .union(typesExplicit)
         .distinctBy((element) => element.interfaceName)
         .toList();
@@ -132,7 +181,7 @@ class MorphyGenerator<TValueT extends MorphyX>
     sb.writeln(createMorphy(
       isAbstract,
       allFieldsDistinct,
-      className,
+      element.name,
       docComment ?? "",
       interfaces,
       allValueTInterfaces,
@@ -141,7 +190,7 @@ class MorphyGenerator<TValueT extends MorphyX>
       annotation.read('generateJson').boolValue,
       annotation.read('hidePublicConstructor').boolValue,
       typesExplicit,
-      annotation.read('nonSealed').boolValue,
+      nonSealed,
       annotation.read('explicitToJson').boolValue,
     ));
 
@@ -150,30 +199,40 @@ class MorphyGenerator<TValueT extends MorphyX>
 
   List<NameTypeClassComment> getAllFieldsIncludingSubtypes(
       ClassElement element) {
-    var fields = getAllFields(element.allSupertypes, element)
-        .where((x) => x.name != "hashCode")
-        .toList();
+    var fields = <NameTypeClassComment>[];
+    var processedTypes = <String>{};
 
-    // Add fields from implemented interfaces
-    for (var interface in element.interfaces) {
-      if (_allAnnotatedClasses.containsKey(interface.element.name)) {
-        var interfaceElement = _allAnnotatedClasses[interface.element.name]!;
-        fields.addAll(
-            getAllFields(interfaceElement.allSupertypes, interfaceElement)
-                .where((x) => x.name != "hashCode"));
+    void addFields(ClassElement element) {
+      if (processedTypes.contains(element.name)) return;
+      processedTypes.add(element.name);
+
+      fields.addAll(getAllFields(element.allSupertypes, element)
+          .where((x) => x.name != "hashCode"));
+
+      // Process interfaces
+      for (var interface in element.interfaces) {
+        if (_allAnnotatedClasses.containsKey(interface.element.name)) {
+          addFields(_allAnnotatedClasses[interface.element.name]!);
+        }
       }
     }
 
-    return fields;
+    addFields(element);
+    return fields.distinctBy((f) => f.name).toList();
   }
 
   List<InterfaceType> getAllImplementedInterfaces(ClassElement element) {
     var interfaces = <InterfaceType>[];
+    var processedInterfaces = <String>{};
     var queue = element.interfaces.toList();
 
     while (queue.isNotEmpty) {
       var current = queue.removeAt(0);
+      if (processedInterfaces.contains(current.element.name)) continue;
+      processedInterfaces.add(current.element.name);
+
       interfaces.add(current);
+      queue.addAll(current.element.interfaces);
 
       if (_allImplementedInterfaces.containsKey(current.element.name)) {
         queue.addAll(_allImplementedInterfaces[current.element.name]!);
@@ -183,35 +242,87 @@ class MorphyGenerator<TValueT extends MorphyX>
     return interfaces;
   }
 
-  void verifyRequiredImports(ClassElement element) {
+  void verifyRequiredImports(ClassElement element, BuildStep buildStep) {
     var sourceLibrary = element.library;
     var requiredTypes = collectRequiredTypes(element);
     var missingImports = <String>{};
 
-    for (var typeName in requiredTypes) {
-      var typeElement = _allAnnotatedClasses[typeName];
-      if (typeElement != null &&
-          typeElement.library != sourceLibrary &&
-          !sourceLibrary.importedLibraries
-              .any((lib) => lib == typeElement.library)) {
-        missingImports.add(typeElement.library.source.uri.toString());
+    var sourceUri = sourceLibrary.source.uri;
+
+    // Get the package name from the build step
+    var packageName = buildStep.inputId.package;
+    var packagePrefix = 'package:$packageName/';
+
+    for (var typeElement in requiredTypes) {
+      var targetLibrary = typeElement.library;
+      if (targetLibrary != null &&
+          targetLibrary != sourceLibrary &&
+          !sourceLibrary.libraryImports
+              .any((import) => import.importedLibrary == targetLibrary)) {
+        var targetUri = targetLibrary.source.uri;
+
+        String importUri;
+
+        if (sourceUri.scheme == 'package' && targetUri.scheme == 'package') {
+          if (sourceUri.toString().startsWith(packagePrefix) &&
+              targetUri.toString().startsWith(packagePrefix)) {
+            // Both URIs are in the same package, compute relative path
+            var sourcePath = sourceUri.path.substring(
+                packageName.length + 1); // Remove 'package:' and package name
+            var targetPath = targetUri.path.substring(packageName.length + 1);
+
+            var relativePath =
+                p.relative(targetPath, from: p.dirname(sourcePath));
+            // Ensure the relative path uses forward slashes
+            importUri = relativePath.replaceAll('\\', '/');
+          } else {
+            // Different packages, cannot compute relative path
+            importUri = targetUri.toString();
+          }
+        } else if (sourceUri.scheme == targetUri.scheme &&
+            sourceUri.scheme == 'file') {
+          // Both URIs are file URIs
+          var sourcePath = sourceUri.toFilePath();
+          var targetPath = targetUri.toFilePath();
+
+          var relativePath =
+              p.relative(targetPath, from: p.dirname(sourcePath));
+          // Ensure the relative path uses forward slashes
+          importUri = relativePath.replaceAll('\\', '/');
+        } else {
+          // Different schemes or cannot compute relative path
+          importUri = targetUri.toString();
+        }
+
+        missingImports.add(importUri);
       }
     }
 
     if (missingImports.isNotEmpty) {
+      var imports =
+          missingImports.map((importUri) => "import '$importUri';").join('\n');
       throw Exception('''
   Missing required imports in ${sourceLibrary.source.uri}:
-  ${missingImports.map((import) => "import '$import';").join('\n')}
+$imports
   ''');
     }
   }
 
-  Set<String> collectRequiredTypes(ClassElement element) {
-    var types = <String>{};
+  Set<ClassElement> collectRequiredTypes(ClassElement element) {
+    var types = <ClassElement>{};
 
-    // Add implemented interfaces
+    // Add implemented interfaces and their inheritance chain
     for (var interface in element.interfaces) {
-      types.add(interface.element.name);
+      if (interface.element is ClassElement) {
+        types.add(interface.element as ClassElement);
+      }
+    }
+
+    // Add supertypes
+    for (var supertype in element.allSupertypes) {
+      if (supertype.element is ClassElement) {
+        types.add(supertype.element as ClassElement);
+      }
     }
 
     // Add explicit subtypes from annotation
@@ -222,7 +333,7 @@ class MorphyGenerator<TValueT extends MorphyX>
         var subtypes = reader.read('explicitSubTypes').listValue;
         for (var type in subtypes) {
           if (type.toTypeValue()?.element is ClassElement) {
-            types.add((type.toTypeValue()?.element as ClassElement).name);
+            types.add(type.toTypeValue()!.element as ClassElement);
           }
         }
       }
