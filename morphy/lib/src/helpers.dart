@@ -259,7 +259,7 @@ String getEquals(List<NameType> fields, String className) {
 }
 
 String createJsonHeader(String className, List<NameType> classGenerics,
-    bool privateConstructor, bool explicitToJson) {
+    bool privateConstructor, bool explicitToJson, bool generateCompareTo) {
   var sb = StringBuffer();
 
   if (!className.startsWith("\$\$")) {
