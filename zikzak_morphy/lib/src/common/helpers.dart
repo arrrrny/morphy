@@ -1,10 +1,135 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
+import 'package:analyzer/dart/constant/value.dart';
 import 'package:dartx/dartx.dart';
+import 'package:source_gen/source_gen.dart';
 
 import 'NameType.dart';
 import 'classes.dart';
+
+/// Extracts @JsonKey annotation information from a field element
+JsonKeyInfo? extractJsonKeyInfo(FieldElement field) {
+  try {
+    // Check for JsonKey annotation
+    final jsonKeyChecker = TypeChecker.fromRuntime(
+      _JsonKeyPlaceholder,
+    );
+
+    // Try to find JsonKey annotation by checking for annotation name
+    final annotation = field.metadata.firstWhereOrNull(
+      (annotation) {
+        final element = annotation.element;
+        return element != null &&
+            (element.displayName == 'JsonKey' ||
+                element.displayName == 'jsonKey');
+      },
+    );
+
+    if (annotation == null) return null;
+
+    // Parse the annotation
+    final reader = ConstantReader(annotation.computeConstantValue());
+
+    String? name;
+    bool? ignore;
+    dynamic defaultValue;
+    bool? required;
+    bool? includeIfNull;
+    String? toJson;
+    String? fromJson;
+
+    try {
+      final nameValue = reader.read('name');
+      if (!nameValue.isNull) {
+        name = nameValue.stringValue;
+      }
+    } catch (_) {}
+
+    try {
+      final ignoreValue = reader.read('ignore');
+      if (!ignoreValue.isNull) {
+        ignore = ignoreValue.boolValue;
+      }
+    } catch (_) {}
+
+    try {
+      final defaultValueObj = reader.read('defaultValue');
+      if (!defaultValueObj.isNull) {
+        // Try to extract the default value
+        if (defaultValueObj.isString) {
+          defaultValue = defaultValueObj.stringValue;
+        } else if (defaultValueObj.isBool) {
+          defaultValue = defaultValueObj.boolValue;
+        } else if (defaultValueObj.isInt) {
+          defaultValue = defaultValueObj.intValue;
+        } else if (defaultValueObj.isDouble) {
+          defaultValue = defaultValueObj.doubleValue;
+        } else {
+          // For complex default values, convert to string representation
+          defaultValue = defaultValueObj.objectValue.toString();
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final requiredValue = reader.read('required');
+      if (!requiredValue.isNull) {
+        required = requiredValue.boolValue;
+      }
+    } catch (_) {}
+
+    try {
+      final includeIfNullValue = reader.read('includeIfNull');
+      if (!includeIfNullValue.isNull) {
+        includeIfNull = includeIfNullValue.boolValue;
+      }
+    } catch (_) {}
+
+    try {
+      final toJsonValue = reader.read('toJson');
+      if (!toJsonValue.isNull) {
+        toJson = toJsonValue.objectValue.toString();
+      }
+    } catch (_) {}
+
+    try {
+      final fromJsonValue = reader.read('fromJson');
+      if (!fromJsonValue.isNull) {
+        fromJson = fromJsonValue.objectValue.toString();
+      }
+    } catch (_) {}
+
+    // Only return JsonKeyInfo if at least one parameter was found
+    if (name != null ||
+        ignore != null ||
+        defaultValue != null ||
+        required != null ||
+        includeIfNull != null ||
+        toJson != null ||
+        fromJson != null) {
+      return JsonKeyInfo(
+        name: name,
+        ignore: ignore,
+        defaultValue: defaultValue,
+        required: required,
+        includeIfNull: includeIfNull,
+        toJson: toJson,
+        fromJson: fromJson,
+      );
+    }
+  } catch (e) {
+    // If we can't parse the annotation, just return null
+    return null;
+  }
+
+  return null;
+}
+
+// Placeholder class for TypeChecker - we're checking by name instead
+class _JsonKeyPlaceholder {
+  const _JsonKeyPlaceholder();
+}
 
 /// [interfaces] a list of interfaces the class implements
 ///
@@ -97,6 +222,7 @@ List<NameTypeClassComment> getAllFields(
                 typeToString(f.type),
                 st.element.name,
                 comment: f.getter?.documentationComment,
+                jsonKeyInfo: extractJsonKeyInfo(f),
                 isEnum: f.type.element is EnumElement,
               ),
             ),
@@ -111,6 +237,7 @@ List<NameTypeClassComment> getAllFields(
           typeToString(f.type),
           element.name,
           comment: f.getter?.documentationComment,
+          jsonKeyInfo: extractJsonKeyInfo(f),
           isEnum: f.type.element is EnumElement,
         ),
       )
