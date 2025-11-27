@@ -69,6 +69,7 @@ List<NameTypeClassComment> getDistinctFields(
       f.type,
       f.className?.replaceAll("\$", ""),
       comment: f.comment,
+      jsonKeyInfo: f.jsonKeyInfo,
       isEnum: f.isEnum,
     ),
   );
@@ -113,6 +114,7 @@ List<NameTypeClassComment> getDistinctFields(
           name,
           null,
           comment: classField.comment,
+          jsonKeyInfo: classField.jsonKeyInfo,
           isEnum: classField.isEnum,
         );
       }
@@ -124,6 +126,7 @@ List<NameTypeClassComment> getDistinctFields(
       type,
       null,
       comment: classField.comment,
+      jsonKeyInfo: classField.jsonKeyInfo,
       isEnum: classField.isEnum,
     );
   }).toList();
@@ -525,23 +528,50 @@ String getDataTypeWithoutDollars(String type) {
 String getProperties(List<NameTypeClassComment> fields) {
   return fields
       .map((e) {
+        var jsonKeyAnnotation = '';
+        if (e.jsonKeyInfo != null) {
+          jsonKeyAnnotation = e.jsonKeyInfo!.toAnnotationString();
+          if (jsonKeyAnnotation.isNotEmpty) {
+            jsonKeyAnnotation = '$jsonKeyAnnotation\n';
+          }
+        }
+
         var line =
             "final ${getDataTypeWithoutDollars(e.type ?? "")} ${e.name};";
-        var result = e.comment == null ? line : "${e.comment}\n$line";
+
+        var result = '';
+        if (e.comment != null) {
+          result = "${e.comment}\n";
+        }
+        result += "$jsonKeyAnnotation$line";
+
         return result;
       })
       .join("\n");
 }
 
-String getPropertiesAbstract(List<NameTypeClassComment> fields) => //
-fields
-    .map(
-      (e) => //
-      e.comment == null
-          ? "${getDataTypeWithoutDollars(e.type ?? "")} get ${e.name};" //
-          : "${e.comment}\n${e.type} get ${e.name};",
-    )
-    .join("\n");
+String getPropertiesAbstract(List<NameTypeClassComment> fields) {
+  return fields
+      .map((e) {
+        var jsonKeyAnnotation = '';
+        if (e.jsonKeyInfo != null) {
+          jsonKeyAnnotation = e.jsonKeyInfo!.toAnnotationString();
+          if (jsonKeyAnnotation.isNotEmpty) {
+            jsonKeyAnnotation = '$jsonKeyAnnotation\n';
+          }
+        }
+
+        var result = '';
+        if (e.comment != null) {
+          result = "${e.comment}\n";
+        }
+        result +=
+            "$jsonKeyAnnotation${getDataTypeWithoutDollars(e.type ?? "")} get ${e.name};";
+
+        return result;
+      })
+      .join("\n");
+}
 
 String getConstructorRows(List<NameType> fields) => //
 fields
