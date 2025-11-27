@@ -504,20 +504,19 @@ $imports
   }
 
   String _extractFactoryBody(ConstructorElement constructor) {
-    // Try to extract the factory body from source using simple pattern matching
+    // Try to extract the factory body from source using pattern matching
     try {
       var source = constructor.source.contents.data;
       var factoryName = constructor.name;
       var originalClassName = constructor.enclosingElement3.name;
-      // var className = originalClassName.replaceAll('\$', '');
+      var className = originalClassName.replaceAll('\$', '');
 
-      // Create a more flexible pattern that handles multi-line factory methods
       // First escape special regex characters in class and factory names - use original name with $
       var escapedClassName = RegExp.escape(originalClassName);
       var escapedFactoryName = RegExp.escape(factoryName);
 
-      // Find the start of the factory method
-      var factoryStartPattern = RegExp(
+      // Try arrow notation first: factory $Class.method(...) => ...;
+      var arrowPattern = RegExp(
         r'factory\s+' +
             escapedClassName +
             r'\.' +
@@ -526,9 +525,9 @@ $imports
         multiLine: true,
       );
 
-      var startMatch = factoryStartPattern.firstMatch(source);
-      if (startMatch != null) {
-        var startPos = startMatch.end;
+      var arrowMatch = arrowPattern.firstMatch(source);
+      if (arrowMatch != null) {
+        var startPos = arrowMatch.end;
         var remainingSource = source.substring(startPos);
 
         // Find the matching semicolon that ends the factory
@@ -563,10 +562,81 @@ $imports
         if (endPos != -1) {
           var body = remainingSource.substring(0, endPos).trim();
 
-          // Transform $ClassName to ClassName
-          body = body.replaceAll(RegExp(r'\$(\w+)'), r'\1');
+          // Transform $ClassName references to ClassName
+          body = _transformClassReferences(body, originalClassName, className);
 
           return 'return ' + body + ';';
+        }
+      }
+
+      // Try curly brace notation: factory $Class.method(...) { ... }
+      var curlyPattern = RegExp(
+        r'factory\s+' +
+            escapedClassName +
+            r'\.' +
+            escapedFactoryName +
+            r'\s*\([^)]*\)\s*\{',
+        multiLine: true,
+      );
+
+      var curlyMatch = curlyPattern.firstMatch(source);
+      if (curlyMatch != null) {
+        var startPos = curlyMatch.end;
+        var remainingSource = source.substring(startPos);
+
+        // Find the matching closing brace
+        var braceDepth = 1;  // We're already inside one brace
+        var inString = false;
+        var inChar = false;
+        var stringChar = '';
+        var endPos = -1;
+
+        for (int i = 0; i < remainingSource.length; i++) {
+          var char = remainingSource[i];
+          var prevChar = i > 0 ? remainingSource[i - 1] : '';
+
+          // Handle strings and chars
+          if (!inString && !inChar) {
+            if (char == '"' && prevChar != r'\') {
+              inString = true;
+              stringChar = '"';
+            } else if (char == "'" && prevChar != r'\') {
+              // Check if this is a char literal or string
+              // Simple heuristic: look ahead for closing quote
+              var nextQuote = remainingSource.indexOf("'", i + 1);
+              if (nextQuote != -1 && nextQuote - i <= 4) {
+                inChar = true;
+              } else {
+                inString = true;
+              }
+              stringChar = "'";
+            } else if (char == '{') {
+              braceDepth++;
+            } else if (char == '}') {
+              braceDepth--;
+              if (braceDepth == 0) {
+                endPos = i;
+                break;
+              }
+            }
+          } else if (inString) {
+            if (char == stringChar && prevChar != r'\') {
+              inString = false;
+            }
+          } else if (inChar) {
+            if (char == "'" && prevChar != r'\') {
+              inChar = false;
+            }
+          }
+        }
+
+        if (endPos != -1) {
+          var body = remainingSource.substring(0, endPos).trim();
+
+          // Transform $ClassName references to ClassName
+          body = _transformClassReferences(body, originalClassName, className);
+
+          return body;
         }
       }
     } catch (e) {
@@ -578,6 +648,35 @@ $imports
         .map((p) => '${p.name}: ${p.name}')
         .join(', ');
     return 'return ${className}(${paramList});';
+  }
+
+  /// Transform $ClassName references to ClassName while preserving variable names
+  String _transformClassReferences(
+    String code,
+    String originalClassName,
+    String cleanClassName,
+  ) {
+    // Transform the specific class name: $ClassName -> ClassName
+    code = code.replaceAll(originalClassName, cleanClassName);
+
+    // Also handle $$ prefixed classes (sealed classes)
+    code = code.replaceAll('\$\$', '');
+
+    // Transform other Morphy class references from _allAnnotatedClasses
+    // But be careful not to transform variable names
+    for (var morphyClass in _allAnnotatedClasses.keys) {
+      if (morphyClass.startsWith('\$')) {
+        var cleanName = morphyClass.replaceAll('\$', '');
+        // Only replace if it's followed by a word boundary (not part of a variable name)
+        // Pattern: $ClassName followed by . ( < or whitespace
+        code = code.replaceAll(
+          RegExp('\\' + morphyClass + r'(?=[\.\(<\s\)])'),
+          cleanName,
+        );
+      }
+    }
+
+    return code;
   }
 
   String _fixSelfReferencingType(

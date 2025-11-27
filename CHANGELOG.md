@@ -1,5 +1,85 @@
 # Changelog
 
+## [2.9.0] - 2025-11-20
+
+### Added
+- **🎉 Curly Brace Factory Support** - Factory methods now support both arrow (`=>`) and curly brace (`{ }`) syntax
+  - Define complex initialization logic with local variables
+  - Multi-step computations and validations
+  - Preserves variable names while transforming class references
+  - Example:
+    ```dart
+    factory $Order.create({required List<OrderItem> items}) {
+      final now = DateTime.now();
+      final total = items.fold(0.0, (sum, item) => sum + item.price);
+      return Order._(
+        id: 'ORD-${now.millisecondsSinceEpoch}',
+        items: items,
+        total: total,
+        createdAt: now,
+      );
+    }
+    ```
+
+- **📦 Comprehensive E-Commerce Example Suite** - Real-world examples in `example/ecommerce/`
+  - `product.dart` - Polymorphic products with sealed classes (`$$Product`)
+  - `order.dart` - Complex nested structures with deep patch operations
+  - `customer.dart` - Generic types (`Preference<T>`, `Cart<T>`)
+  - `category.dart` - Self-referencing tree structures
+  - `ecommerce_demo.dart` - Complete integration demo showcasing all features
+
+- **🎯 Enhanced Documentation**
+  - Detailed README for e-commerce examples
+  - Feature-by-feature breakdown with real code
+  - Learning path for new users
+  - Production-ready patterns
+
+### Improved
+- **Smart Class Reference Transformation** - New `_transformClassReferences()` method
+  - Transforms `$ClassName` to `ClassName` in factory bodies
+  - Preserves variable names (doesn't transform `$variable`)
+  - Handles all known Morphy classes from `_allAnnotatedClasses`
+  - Uses word boundaries to avoid partial matches
+
+- **Factory Body Extraction** - Enhanced `_extractFactoryBody()` method
+  - Tries arrow notation first (backward compatible)
+  - Falls back to curly brace notation
+  - Proper brace depth tracking
+  - String and character literal handling
+  - Escape character support
+
+### Examples
+All examples demonstrate:
+- ✅ Polymorphic sealed classes with `$$` prefix
+- ✅ Curly brace factories with complex logic
+- ✅ Generic types (`Preference<T>`, `Cart<T>`)
+- ✅ Explicit subtypes for type transformations
+- ✅ Deep nested patches for complex updates
+- ✅ Self-referencing structures
+- ✅ JSON serialization
+- ✅ Extension methods for utilities
+
+### Technical Details
+- Factory methods can now use full Dart syntax in curly brace bodies
+- Automatic transformation of `$ClassName` references while preserving variables
+- Support for nested braces, strings, and complex expressions
+- Backward compatible with existing arrow notation factories
+- No breaking changes to existing code
+
+### Migration from v2.8.x
+No changes required! All existing code continues to work:
+- Arrow notation factories (`=>`) still fully supported
+- Simply add curly braces for more complex initialization
+- Regenerate with `dart run build_runner build`
+
+### Real-World Use Cases
+See `example/ecommerce/` for:
+1. **Product Management** - Physical, digital, and subscription products
+2. **Order Processing** - Complex calculations and nested updates
+3. **Customer Management** - Preferences, tiers, and loyalty
+4. **Category Trees** - Hierarchical navigation and breadcrumbs
+5. **Type Transformations** - Generic to specific type conversions
+
 ## [2.7.0] - 2025-07-16
 
 ### Added
