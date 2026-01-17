@@ -52,15 +52,19 @@ echo "📥 Getting dependencies..."
 cd "$PACKAGE_DIR"
 dart pub get
 
+# Compile MCP server to kernel for faster startup
+echo "🔨 Compiling morphy_mcp_server to kernel (precompiled)..."
+dart compile kernel bin/morphy_mcp_server.dart -o bin/morphy_mcp_server.dill
+
 # Create the pub bin directory if it doesn't exist
 mkdir -p "$PUB_BIN"
 
-# Create custom wrapper scripts that use dart run directly
+# Create custom wrapper scripts
 # This avoids the noisy "Downloading packages" output from dart pub global run
 
 echo "📝 Creating wrapper scripts..."
 
-# Create morphy wrapper
+# Create morphy wrapper (uses dart run for flexibility)
 cat > "$PUB_BIN/morphy" << 'WRAPPER_EOF'
 #!/usr/bin/env bash
 # Morphy CLI wrapper - runs dart directly to avoid pub noise
@@ -72,11 +76,11 @@ sed -i.bak "s|PACKAGE_DIR_PLACEHOLDER|$PACKAGE_DIR|g" "$PUB_BIN/morphy"
 rm -f "$PUB_BIN/morphy.bak"
 chmod +x "$PUB_BIN/morphy"
 
-# Create morphy_mcp_server wrapper
+# Create morphy_mcp_server wrapper (uses precompiled kernel for fast startup)
 cat > "$PUB_BIN/morphy_mcp_server" << 'WRAPPER_EOF'
 #!/usr/bin/env bash
-# Morphy MCP Server wrapper - runs dart directly to avoid pub noise
-exec dart run "PACKAGE_DIR_PLACEHOLDER/bin/morphy_mcp_server.dart" "$@"
+# Morphy MCP Server wrapper - uses precompiled kernel for fast startup
+exec dart "PACKAGE_DIR_PLACEHOLDER/bin/morphy_mcp_server.dill" "$@"
 WRAPPER_EOF
 
 # Replace placeholder with actual path
