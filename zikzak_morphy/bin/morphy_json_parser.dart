@@ -39,9 +39,24 @@ import 'package:path/path.dart' as p;
 
 /// JSON parser that infers types from JSON data and generates morphy entities
 class MorphyJsonParser {
+  /// Whether to prefix nested entity names with the parent entity name
+  /// e.g., Order.customer becomes OrderCustomer instead of just Customer
+  final bool prefixNestedEntities;
+
+  MorphyJsonParser({this.prefixNestedEntities = true});
+
   /// Parse JSON and return entity schema
-  EntitySchema parseJson(Map<String, dynamic> json, {String? entityName}) {
+  EntitySchema parseJson(
+    Map<String, dynamic> json, {
+    String? entityName,
+    String? parentPrefix,
+  }) {
     entityName ??= 'Entity';
+
+    // Apply parent prefix if enabled
+    final fullEntityName = prefixNestedEntities && parentPrefix != null
+        ? '$parentPrefix$entityName'
+        : entityName;
 
     final fields = <FieldSchema>[];
     final nestedEntities = <EntitySchema>[];
@@ -60,17 +75,18 @@ class MorphyJsonParser {
 
       if (fieldType == '_NestedObject') {
         // Nested object → create separate entity
-        final nestedEntityName = _toPascalCase(fieldName);
+        final nestedBaseName = _toPascalCase(fieldName);
         final nestedSchema = parseJson(
           value as Map<String, dynamic>,
-          entityName: nestedEntityName,
+          entityName: nestedBaseName,
+          parentPrefix: prefixNestedEntities ? fullEntityName : null,
         );
         nestedEntities.add(nestedSchema);
 
         fields.add(
           FieldSchema(
             name: fieldName,
-            type: nestedEntityName,
+            type: nestedSchema.name,
             isNullable: isExplicitlyNullable,
             isPrimitive: false,
             isMorphyEntity: true,
@@ -91,10 +107,17 @@ class MorphyJsonParser {
             ),
           );
         } else {
-          final itemEntityName = _singularize(_toPascalCase(fieldName));
+          final itemBaseName = _singularize(_toPascalCase(fieldName));
+          final itemEntityName = prefixNestedEntities
+              ? '$fullEntityName$itemBaseName'
+              : itemBaseName;
 
           // Parse all items and merge schemas to get accurate type inference
-          final itemSchema = _parseListItems(list, itemEntityName);
+          final itemSchema = _parseListItems(
+            list,
+            itemEntityName,
+            parentPrefix: prefixNestedEntities ? fullEntityName : null,
+          );
           nestedEntities.add(itemSchema);
 
           fields.add(
@@ -122,7 +145,7 @@ class MorphyJsonParser {
     }
 
     return EntitySchema(
-      name: entityName,
+      name: fullEntityName,
       fields: fields,
       nestedEntities: nestedEntities,
     );
@@ -240,7 +263,11 @@ class MorphyJsonParser {
 
   /// Parse list items and merge schemas to get accurate type inference
   /// Checks all items, not just the first one
-  EntitySchema _parseListItems(List list, String entityName) {
+  EntitySchema _parseListItems(
+    List list,
+    String entityName, {
+    String? parentPrefix,
+  }) {
     // Collect field info from ALL items
     final Map<String, Set<String>> fieldTypes = {};
     final Map<String, bool> fieldNullability = {};
@@ -295,7 +322,7 @@ class MorphyJsonParser {
 
       // Handle nested objects
       if (finalType == '_NestedObject') {
-        final nestedEntityName = _toPascalCase(key);
+        final nestedBaseName = _toPascalCase(key);
         // Get first non-null nested object to parse
         final nestedItem = list.firstWhere(
           (item) => item is Map && item[key] is Map,
@@ -305,14 +332,15 @@ class MorphyJsonParser {
         if (nestedItem != null) {
           final nestedSchema = parseJson(
             nestedItem[key] as Map<String, dynamic>,
-            entityName: nestedEntityName,
+            entityName: nestedBaseName,
+            parentPrefix: prefixNestedEntities ? entityName : null,
           );
           nestedEntities.add(nestedSchema);
 
           fields.add(
             FieldSchema(
               name: key,
-              type: nestedEntityName,
+              type: nestedSchema.name,
               isNullable: isNullable,
               isPrimitive: false,
               isMorphyEntity: true,
@@ -507,6 +535,7 @@ Future<GenerateFromJsonResult> generateEntityFromJsonFile({
   String? entityName,
   bool generateJson = false,
   bool generateCompareTo = true,
+  bool prefixNestedEntities = true,
 }) async {
   // Read JSON file
   final jsonFile = File(jsonFilePath);
@@ -521,7 +550,7 @@ Future<GenerateFromJsonResult> generateEntityFromJsonFile({
   entityName ??= _inferEntityName(jsonFilePath);
 
   // Parse JSON
-  final parser = MorphyJsonParser();
+  final parser = MorphyJsonParser(prefixNestedEntities: prefixNestedEntities);
   final schema = parser.parseJson(jsonData, entityName: entityName);
 
   // Generate code
@@ -568,11 +597,12 @@ GenerateFromJsonResult generateEntityFromJsonString({
   required String outputFileName,
   bool generateJson = false,
   bool generateCompareTo = true,
+  bool prefixNestedEntities = true,
 }) {
   final jsonData = jsonDecode(jsonString) as Map<String, dynamic>;
 
   // Parse JSON
-  final parser = MorphyJsonParser();
+  final parser = MorphyJsonParser(prefixNestedEntities: prefixNestedEntities);
   final schema = parser.parseJson(jsonData, entityName: entityName);
 
   // Generate code

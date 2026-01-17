@@ -264,6 +264,7 @@ class MorphyMcpServer {
       'name': 'morphy_from_json',
       'description':
           'Generate a morphy entity class from JSON data. '
+          'Creates entity in its own subdirectory (e.g., entities/product/product.dart) and automatically generates the .morphy.dart file. '
           'Field names ending with "?" will be nullable (e.g., "lastName?": "Doe" becomes String? get lastName). '
           'Supports primitives (String, int, double, bool, DateTime), nested objects, and lists. '
           'Nested objects automatically generate separate entity classes.',
@@ -288,7 +289,7 @@ class MorphyMcpServer {
           'output_dir': {
             'type': 'string',
             'description':
-                'Output directory for the generated entity file. Defaults to "lib/src/domain/entities".',
+                'Base output directory. Entity will be created in a subdirectory named after the entity (e.g., output_dir/product/product.dart). Defaults to "lib/src/domain/entities".',
           },
           'generate_json': {
             'type': 'boolean',
@@ -298,6 +299,11 @@ class MorphyMcpServer {
           'generate_compare': {
             'type': 'boolean',
             'description': 'Generate compareTo support. Defaults to true.',
+          },
+          'prefix_nested': {
+            'type': 'boolean',
+            'description':
+                'Prefix nested entity names with parent entity name (e.g., Order.customer becomes OrderCustomer). Defaults to true.',
           },
         },
         'required': [],
@@ -427,6 +433,7 @@ class MorphyMcpServer {
 
     final generatedFiles = <String>[];
     final errors = <String>[];
+    final buffer = StringBuffer();
     var successCount = 0;
     var skippedCount = 0;
 
@@ -450,9 +457,135 @@ class MorphyMcpServer {
       }
     }
 
-    final buffer = StringBuffer();
+    // Check if any generated .morphy.dart files contain JsonSerializable annotations
+    // and run build_runner if needed
+    final jsonSerializableFiles = <String>[];
+    for (final morphyFile in generatedFiles) {
+      if (morphyFile.endsWith('.morphy.dart')) {
+        try {
+          final content = await File(morphyFile).readAsString();
+          if (content.contains('@JsonSerializable')) {
+            final entityFile = morphyFile.replaceAll('.morphy.dart', '.dart');
+            if (File(entityFile).existsSync()) {
+              jsonSerializableFiles.add(entityFile);
+            }
+          }
+        } catch (e) {
+          // Ignore errors when checking file content
+        }
+      }
+    }
+
+    // Run build_runner for files with JSON serialization
+    if (jsonSerializableFiles.isNotEmpty) {
+      try {
+        // Find the project root (where pubspec.yaml is)
+        var projectRoot = Directory(absoluteDir);
+        var searchDir = Directory(absoluteDir);
+        const maxIterations = 50;
+        var iterations = 0;
+
+        if (verbose) {
+          buffer.writeln(
+            'Searching for pubspec.yaml starting from: $absoluteDir',
+          );
+        }
+
+        // Search up the directory tree for pubspec.yaml
+        while (iterations < maxIterations) {
+          if (File(p.join(searchDir.path, 'pubspec.yaml')).existsSync()) {
+            projectRoot = searchDir;
+            if (verbose) {
+              buffer.writeln('Found pubspec.yaml at: ${projectRoot.path}');
+            }
+            break;
+          }
+
+          final parent = searchDir.parent;
+          if (parent.path == searchDir.path || searchDir.path == '/') {
+            throw Exception(
+              'Could not find pubspec.yaml in parent directories starting from $absoluteDir',
+            );
+          }
+
+          searchDir = parent;
+          iterations++;
+        }
+
+        if (verbose) {
+          buffer.writeln(
+            'JSON serializable files found: ${jsonSerializableFiles.length}',
+          );
+          for (final file in jsonSerializableFiles) {
+            buffer.writeln('  - ${p.relative(file, from: absoluteDir)}');
+          }
+        }
+
+        // Build filter for all JSON serializable files
+        final buildFilters = jsonSerializableFiles
+            .map(
+              (file) =>
+                  '--build-filter=${p.relative(file, from: projectRoot.path)}',
+            )
+            .toList();
+
+        if (verbose) {
+          buffer.writeln('Build filters: ${buildFilters.join(", ")}');
+        }
+
+        final buildResult = await Process.run('dart', [
+          'run',
+          'build_runner',
+          'build',
+          ...buildFilters,
+          '--delete-conflicting-outputs',
+        ], workingDirectory: projectRoot.path);
+
+        if (verbose && buildResult.stdout.isNotEmpty) {
+          buffer.writeln('build_runner stdout:');
+          for (final line in buildResult.stdout.split('\n')) {
+            buffer.writeln('  $line');
+          }
+        }
+
+        if (buildResult.exitCode == 0) {
+          // Check which .g.dart files were created
+          for (final entityFile in jsonSerializableFiles) {
+            final gDartFile = entityFile.replaceAll('.dart', '.g.dart');
+            if (verbose) {
+              buffer.writeln('Checking for .g.dart file: $gDartFile');
+            }
+            if (File(gDartFile).existsSync()) {
+              generatedFiles.add(gDartFile);
+              if (verbose) {
+                buffer.writeln(
+                  '  ✓ Generated: ${p.relative(gDartFile, from: absoluteDir)}',
+                );
+              }
+            } else if (verbose) {
+              buffer.writeln(
+                '  ✗ .g.dart file not found: ${p.relative(gDartFile, from: absoluteDir)}',
+              );
+            }
+          }
+        } else {
+          buffer.writeln(
+            '  Warning: build_runner failed with exit code ${buildResult.exitCode}',
+          );
+          if (buildResult.stdout.isNotEmpty) {
+            buffer.writeln('  stdout: ${buildResult.stdout}');
+          }
+          if (buildResult.stderr.isNotEmpty) {
+            buffer.writeln('  stderr: ${buildResult.stderr}');
+          }
+        }
+      } catch (e) {
+        buffer.writeln('  Warning: Could not run build_runner for .g.dart: $e');
+      }
+    }
+
     buffer.writeln('Morphy generation completed:');
-    buffer.writeln('  Generated: $successCount files');
+    buffer.writeln('  Generated: ${generatedFiles.length} files');
     buffer.writeln('  Skipped: $skippedCount files (no morphy annotations)');
     if (errors.isNotEmpty) {
       buffer.writeln('  Errors: ${errors.length}');
@@ -585,6 +718,7 @@ Or use the generate tool periodically after making changes.
         args['output_dir'] as String? ?? 'lib/src/domain/entities';
     final generateJson = args['generate_json'] as bool? ?? false;
     final generateCompare = args['generate_compare'] as bool? ?? true;
+    final prefixNested = args['prefix_nested'] as bool? ?? true;
 
     if (jsonData == null && jsonFilePath == null) {
       throw Exception('Either "json" or "json_file" must be provided');
@@ -593,6 +727,7 @@ Or use the generate tool periodically after making changes.
     final absoluteOutputDir = p.normalize(p.absolute(outputDir));
 
     GenerateFromJsonResult result;
+    final generatedFiles = <String>[];
 
     if (jsonFilePath != null) {
       // Generate from file
@@ -602,12 +737,24 @@ Or use the generate tool periodically after making changes.
         throw Exception('JSON file not found: $absoluteJsonPath');
       }
 
+      // Infer entity name from file if not provided
+      final effectiveEntityName =
+          entityName ??
+          _toPascalCase(p.basenameWithoutExtension(absoluteJsonPath));
+
+      // Create entity subdirectory: entities/product/product.dart
+      final entitySnakeCase = _toSnakeCase(effectiveEntityName);
+      final entitySubDir = p.join(absoluteOutputDir, entitySnakeCase);
+
+      await Directory(entitySubDir).create(recursive: true);
+
       result = await generateEntityFromJsonFile(
         jsonFilePath: absoluteJsonPath,
-        outputDir: absoluteOutputDir,
-        entityName: entityName,
+        outputDir: entitySubDir,
+        entityName: effectiveEntityName,
         generateJson: generateJson,
         generateCompareTo: generateCompare,
+        prefixNestedEntities: prefixNested,
       );
     } else {
       // Generate from JSON object
@@ -615,11 +762,14 @@ Or use the generate tool periodically after making changes.
         throw Exception('"name" is required when using "json" directly');
       }
 
-      final fileName = _toSnakeCase(entityName) + '.dart';
-      final outputPath = p.join(absoluteOutputDir, fileName);
+      // Create entity subdirectory: entities/product/product.dart
+      final entitySnakeCase = _toSnakeCase(entityName);
+      final entitySubDir = p.join(absoluteOutputDir, entitySnakeCase);
+      final fileName = entitySnakeCase + '.dart';
+      final outputPath = p.join(entitySubDir, fileName);
 
       // Create directory if it doesn't exist
-      await Directory(absoluteOutputDir).create(recursive: true);
+      await Directory(entitySubDir).create(recursive: true);
 
       final genResult = generateEntityFromJsonString(
         jsonString: jsonEncode(jsonData),
@@ -627,6 +777,7 @@ Or use the generate tool periodically after making changes.
         outputFileName: fileName,
         generateJson: generateJson,
         generateCompareTo: generateCompare,
+        prefixNestedEntities: prefixNested,
       );
 
       // Write the file
@@ -640,26 +791,120 @@ Or use the generate tool periodically after making changes.
       );
     }
 
+    generatedFiles.add(result.filePath);
+
+    // Auto-generate the .morphy.dart file
+    String? morphyFilePath;
+    String morphyGenerationStatus = '';
+    try {
+      final entityDir = p.dirname(result.filePath);
+      final collection = AnalysisContextCollection(
+        includedPaths: [entityDir],
+        resourceProvider: PhysicalResourceProvider.INSTANCE,
+      );
+
+      morphyFilePath = await _processFile(
+        result.filePath,
+        collection,
+        entityDir,
+        true, // deleteConflicting
+        false, // verbose
+      );
+
+      if (morphyFilePath != null) {
+        generatedFiles.add(morphyFilePath);
+        morphyGenerationStatus = '  Generated: ${p.basename(morphyFilePath)}';
+      } else {
+        morphyGenerationStatus =
+            '  Warning: No morphy annotations found to generate';
+      }
+    } catch (e) {
+      morphyGenerationStatus =
+          '  Warning: Could not auto-generate .morphy.dart: $e';
+    }
+
+    // Auto-generate the .g.dart file using build_runner if generateJson is true
+    String? gDartFilePath;
+    String gDartGenerationStatus = '';
+    if (generateJson) {
+      try {
+        // Find the project root (where pubspec.yaml is)
+        var projectRoot = Directory(p.dirname(result.filePath));
+        while (!File(p.join(projectRoot.path, 'pubspec.yaml')).existsSync()) {
+          final parent = projectRoot.parent;
+          if (parent.path == projectRoot.path) {
+            throw Exception(
+              'Could not find pubspec.yaml in parent directories',
+            );
+          }
+          projectRoot = parent;
+        }
+
+        // Run build_runner on the specific file
+        final buildResult = await Process.run('dart', [
+          'run',
+          'build_runner',
+          'build',
+          '--build-filter=${p.relative(result.filePath, from: projectRoot.path)}',
+          '--delete-conflicting-outputs',
+        ], workingDirectory: projectRoot.path);
+
+        if (buildResult.exitCode == 0) {
+          gDartFilePath = result.filePath.replaceAll('.dart', '.g.dart');
+          if (File(gDartFilePath).existsSync()) {
+            generatedFiles.add(gDartFilePath);
+            gDartGenerationStatus = '  Generated: ${p.basename(gDartFilePath)}';
+          } else {
+            gDartGenerationStatus =
+                '  Warning: .g.dart file not created by build_runner';
+          }
+        } else {
+          gDartGenerationStatus =
+              '  Warning: build_runner failed: ${buildResult.stderr}';
+        }
+      } catch (e) {
+        gDartGenerationStatus =
+            '  Warning: Could not run build_runner for .g.dart: $e';
+      }
+    }
+
     final buffer = StringBuffer();
     buffer.writeln('Generated morphy entity from JSON:');
     buffer.writeln('  Entity: ${result.entityName}');
     buffer.writeln('  File: ${result.filePath}');
+    if (morphyFilePath != null) {
+      buffer.writeln('  Morphy: $morphyFilePath');
+    }
+    if (gDartFilePath != null) {
+      buffer.writeln('  JSON: $gDartFilePath');
+    }
     if (result.nestedEntityNames.isNotEmpty) {
       buffer.writeln(
         '  Nested entities: ${result.nestedEntityNames.join(', ')}',
       );
     }
     buffer.writeln('');
-    buffer.writeln('Next steps:');
-    buffer.writeln('  1. Run: morphy generate');
-    buffer.writeln(
-      '  2. Or: dart run build_runner build --delete-conflicting-outputs',
-    );
+    buffer.writeln(morphyGenerationStatus);
+    if (generateJson) {
+      buffer.writeln(gDartGenerationStatus);
+    }
 
     return GenerateResult(
       message: buffer.toString(),
-      generatedFiles: [result.filePath],
+      generatedFiles: generatedFiles,
     );
+  }
+
+  /// Convert snake_case to PascalCase
+  String _toPascalCase(String input) {
+    return input
+        .split(RegExp(r'[_\-\s]+'))
+        .map(
+          (word) => word.isEmpty
+              ? ''
+              : word[0].toUpperCase() + word.substring(1).toLowerCase(),
+        )
+        .join('');
   }
 
   /// Convert PascalCase to snake_case
