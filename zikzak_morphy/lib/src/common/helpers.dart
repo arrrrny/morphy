@@ -1,7 +1,7 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
-import 'package:analyzer/dart/constant/value.dart';
+import 'package:collection/collection.dart';
 import 'package:dartx/dartx.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -11,20 +11,25 @@ import 'classes.dart';
 /// Extracts @JsonKey annotation information from a field element
 JsonKeyInfo? extractJsonKeyInfo(FieldElement field) {
   try {
-    // Check for JsonKey annotation
-    final jsonKeyChecker = TypeChecker.fromRuntime(
-      _JsonKeyPlaceholder,
-    );
-
     // Try to find JsonKey annotation by checking for annotation name
-    final annotation = field.metadata.firstWhereOrNull(
-      (annotation) {
+    // First check the field's metadata
+    var annotation = field.metadata.firstWhereOrNull((annotation) {
+      final element = annotation.element;
+      return element != null &&
+          (element.displayName == 'JsonKey' ||
+              element.displayName == 'jsonKey');
+    });
+
+    // If not found on field, check the getter's metadata
+    // This is needed for abstract getters like: @JsonKey(name: 'x') String get x;
+    if (annotation == null && field.getter != null) {
+      annotation = field.getter!.metadata.firstWhereOrNull((annotation) {
         final element = annotation.element;
         return element != null &&
             (element.displayName == 'JsonKey' ||
                 element.displayName == 'jsonKey');
-      },
-    );
+      });
+    }
 
     if (annotation == null) return null;
 
@@ -36,6 +41,8 @@ JsonKeyInfo? extractJsonKeyInfo(FieldElement field) {
     dynamic defaultValue;
     bool? required;
     bool? includeIfNull;
+    bool? includeFromJson;
+    bool? includeToJson;
     String? toJson;
     String? fromJson;
 
@@ -87,6 +94,20 @@ JsonKeyInfo? extractJsonKeyInfo(FieldElement field) {
     } catch (_) {}
 
     try {
+      final includeFromJsonValue = reader.read('includeFromJson');
+      if (!includeFromJsonValue.isNull) {
+        includeFromJson = includeFromJsonValue.boolValue;
+      }
+    } catch (_) {}
+
+    try {
+      final includeToJsonValue = reader.read('includeToJson');
+      if (!includeToJsonValue.isNull) {
+        includeToJson = includeToJsonValue.boolValue;
+      }
+    } catch (_) {}
+
+    try {
       final toJsonValue = reader.read('toJson');
       if (!toJsonValue.isNull) {
         toJson = toJsonValue.objectValue.toString();
@@ -106,6 +127,8 @@ JsonKeyInfo? extractJsonKeyInfo(FieldElement field) {
         defaultValue != null ||
         required != null ||
         includeIfNull != null ||
+        includeFromJson != null ||
+        includeToJson != null ||
         toJson != null ||
         fromJson != null) {
       return JsonKeyInfo(
@@ -114,6 +137,8 @@ JsonKeyInfo? extractJsonKeyInfo(FieldElement field) {
         defaultValue: defaultValue,
         required: required,
         includeIfNull: includeIfNull,
+        includeFromJson: includeFromJson,
+        includeToJson: includeToJson,
         toJson: toJson,
         fromJson: fromJson,
       );
@@ -124,11 +149,6 @@ JsonKeyInfo? extractJsonKeyInfo(FieldElement field) {
   }
 
   return null;
-}
-
-// Placeholder class for TypeChecker - we're checking by name instead
-class _JsonKeyPlaceholder {
-  const _JsonKeyPlaceholder();
 }
 
 /// [interfaces] a list of interfaces the class implements

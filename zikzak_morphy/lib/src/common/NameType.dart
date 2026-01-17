@@ -43,6 +43,8 @@ class JsonKeyInfo {
   final dynamic defaultValue;
   final bool? required;
   final bool? includeIfNull;
+  final bool? includeFromJson;
+  final bool? includeToJson;
   final String? toJson;
   final String? fromJson;
 
@@ -52,6 +54,8 @@ class JsonKeyInfo {
     this.defaultValue,
     this.required,
     this.includeIfNull,
+    this.includeFromJson,
+    this.includeToJson,
     this.toJson,
     this.fromJson,
   });
@@ -79,6 +83,12 @@ class JsonKeyInfo {
     }
     if (includeIfNull != null) {
       params.add("includeIfNull: $includeIfNull");
+    }
+    if (includeFromJson != null) {
+      params.add("includeFromJson: $includeFromJson");
+    }
+    if (includeToJson != null) {
+      params.add("includeToJson: $includeToJson");
     }
     if (toJson != null) {
       params.add("toJson: $toJson");

@@ -1,5 +1,7 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
+// ignore_for_file: type=lint, unnecessary_cast
+
 part of 'ex53_abstract_json_test.dart';
 
 // **************************************************************************
@@ -14,7 +16,7 @@ Todo2 _$Todo2FromJson(Map<String, dynamic> json) => Todo2(
 
 Map<String, dynamic> _$Todo2ToJson(Todo2 instance) => <String, dynamic>{
   'title': instance.title,
-  'id': instance.id,
+  if (instance.id case final value?) 'id': value,
   'description': instance.description,
 };
 
@@ -28,7 +30,7 @@ Todo2_incomplete _$Todo2_incompleteFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$Todo2_incompleteToJson(Todo2_incomplete instance) =>
     <String, dynamic>{
       'title': instance.title,
-      'id': instance.id,
+      if (instance.id case final value?) 'id': value,
       'description': instance.description,
     };
 
@@ -43,7 +45,7 @@ Todo2_complete _$Todo2_completeFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$Todo2_completeToJson(Todo2_complete instance) =>
     <String, dynamic>{
       'title': instance.title,
-      'id': instance.id,
+      if (instance.id case final value?) 'id': value,
       'description': instance.description,
       'completedDate': instance.completedDate.toIso8601String(),
     };

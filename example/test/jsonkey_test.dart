@@ -20,7 +20,10 @@ main() {
     // The JSON should use the @JsonKey name values
     expect(json['id'], '123');
     expect(json['user_name'], 'john_doe'); // Should be user_name, not userName
-    expect(json['email'], 'john@example.com'); // Should be email, not emailAddress
+    expect(
+      json['email'],
+      'john@example.com',
+    ); // Should be email, not emailAddress
     expect(json['_className_'], 'User');
   });
 
@@ -29,7 +32,7 @@ main() {
       'id': '456',
       'user_name': 'jane_doe',
       'email': 'jane@example.com',
-      '_className_': 'User'
+      '_className_': 'User',
     };
 
     var user = User.fromJson(json);
@@ -45,22 +48,21 @@ main() {
       'id': '789',
       'user_name': 'default_user',
       // email is missing, should use default value
-      '_className_': 'User'
+      '_className_': 'User',
     };
 
     var user = User.fromJson(json);
 
     expect(user.id, '789');
     expect(user.userName, 'default_user');
-    expect(user.emailAddress, 'no-email@example.com'); // Should use defaultValue
+    expect(
+      user.emailAddress,
+      'no-email@example.com',
+    ); // Should use defaultValue
   });
 
   test("4 - @JsonKey with ignore", () {
-    var profile = Profile(
-      userId: "user123",
-      displayName: "John Doe",
-      internalToken: "secret-token-12345",
-    );
+    var profile = Profile(userId: "user123", displayName: "John Doe");
 
     var json = profile.toJson();
     print("Profile JSON: $json");
@@ -69,6 +71,36 @@ main() {
     expect(json['displayName'], 'John Doe');
     // internalToken should NOT be in JSON due to ignore: true
     expect(json.containsKey('internalToken'), false);
+  });
+
+  test("5 - @JsonKey with includeFromJson and includeToJson", () {
+    var settings = Settings(theme: "dark", language: "en");
+
+    var json = settings.toJson();
+    print("Settings JSON: $json");
+
+    // theme and language should be in JSON
+    expect(json['theme'], 'dark');
+    expect(json['language'], 'en');
+    // debugMode should NOT be in JSON due to includeToJson: false
+    expect(json.containsKey('debugMode'), false);
+  });
+
+  test("6 - @JsonKey with includeFromJson: false", () {
+    var json = {
+      'theme': 'light',
+      'language': 'fr',
+      'debugMode': true, // This should be ignored during deserialization
+      '_className_': 'Settings',
+    };
+
+    var settings = Settings.fromJson(json);
+    print("Settings from JSON: ${settings.toString()}");
+
+    expect(settings.theme, 'light');
+    expect(settings.language, 'fr');
+    // debugMode should be null since includeFromJson: false
+    expect(settings.debugMode, null);
   });
 }
 
@@ -89,5 +121,14 @@ abstract class $Profile {
   String get displayName;
 
   @JsonKey(ignore: true)
-  String get internalToken;
+  String? get internalToken;
+}
+
+@Morphy(generateJson: true)
+abstract class $Settings {
+  String get theme;
+  String get language;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  bool? get debugMode;
 }

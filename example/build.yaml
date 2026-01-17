@@ -1,0 +1,26 @@
+targets:
+  $default:
+    builders:
+      zikzak_morphy|morphy:
+        enabled: true
+        generate_for:
+          - lib/**
+          - test/**
+      json_serializable:
+        enabled: true
+        generate_for:
+          - lib/**
+          - test/**
+        options:
+          # Reduces generated code size
+          explicit_to_json: false
+          include_if_null: false
+
+# Global options for better performance
+global_options:
+  # Skip analyzing files that don't need code generation
+  source_gen|combining_builder:
+    options:
+      ignore_for_file:
+        - type=lint
+        - unnecessary_cast
