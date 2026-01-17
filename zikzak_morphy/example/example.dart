@@ -1,10 +1,12 @@
 //see example project in github for more examples
 
-//part 'example.morphy.dart';
-
 //THE SIMPLEST OF EXAMPLES
 
-//@morphy
+import 'package:zikzak_morphy/zikzak_morphy.dart';
+part 'example.morphy.dart';
+part 'example.g.dart';
+
+@Morphy(generateJson: true)
 abstract class $Pet {
   String get type;
 }

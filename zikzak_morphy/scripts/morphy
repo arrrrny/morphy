@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Morphy CLI wrapper - suppresses noisy pub output
+# This script runs morphy while filtering out the "Downloading packages" noise
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PACKAGE_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Run dart directly on the morphy.dart script, suppressing pub noise
+exec dart run "$PACKAGE_DIR/bin/morphy.dart" "$@" 2>&1 | grep -v "Downloading packages" | grep -v "available)" | grep -v "No dependencies would change" | grep -v "packages have newer versions" | grep -v "Try \`dart pub outdated\`" | grep -v "^$"

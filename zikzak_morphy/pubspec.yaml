@@ -1,14 +1,14 @@
 name: zikzak_morphy
 description: A powerful code generation package for Dart/Flutter that provides clean class definitions with copyWith, JSON serialization, toString, equality, and inheritance support
-version: 2.9.0
+version: 2.9.1
 homepage: https://github.com/arrrrny/morphy
 
 environment:
   sdk: ">=3.8.0 <4.0.0"
 
 executables:
-  morphy: bin/morphy
-  morphy_mcp_server: bin/morphy_mcp_server
+  morphy: morphy
+  morphy_mcp_server: morphy_mcp_server
 
 dependencies:
   zikzak_morphy_annotation: ^2.9.0
@@ -26,4 +26,5 @@ dependencies:
 
 dev_dependencies:
   build_runner: ^2.5.4
+  json_serializable: ^6.9.5
   test: ^1.26.2
