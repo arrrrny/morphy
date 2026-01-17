@@ -5,8 +5,8 @@ environment:
   sdk: ">=3.8.0 <4.0.0"
 
 dependencies:
-  zikzak_morphy_annotation:
-    path: ../zikzak_morphy_annotation
+  zikzak_morphy_annotation: ^2.9.0
+
   json_annotation: ^4.9.0
 
 dev_dependencies:

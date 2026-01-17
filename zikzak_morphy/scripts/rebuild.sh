@@ -37,6 +37,16 @@ if [ -d "$DART_TOOL_BIN" ]; then
     rm -rf "$DART_TOOL_BIN"
 fi
 
+# Clear build cache
+BUILD_CACHE="$PACKAGE_DIR/.dart_tool/build_cache"
+if [ -d "$BUILD_CACHE" ]; then
+    echo "🗑️  Clearing build cache..."
+    rm -rf "$BUILD_CACHE"
+fi
+
+# Clear any .dill and .snap files in .dart_tool
+find "$PACKAGE_DIR/.dart_tool" -type f \( -name "*.dill" -o -name "*.snap" \) -delete 2>/dev/null || true
+
 # Get dependencies
 echo "📥 Getting dependencies..."
 cd "$PACKAGE_DIR"

@@ -173,23 +173,11 @@ class MorphyCli {
           print('Files to process: ${jsonSerializableFiles.length}');
         }
 
-        // Build filter for all JSON serializable files
-        final buildFilters = jsonSerializableFiles
-            .map(
-              (file) =>
-                  '--build-filter=${p.relative(file, from: projectRoot.path)}',
-            )
-            .toList();
-
-        if (verbose) {
-          print('Build filters: $buildFilters');
-        }
-
+        // Run build_runner without filters to let it discover and process all files
         final buildResult = await Process.run('dart', [
           'run',
           'build_runner',
           'build',
-          ...buildFilters,
           '--delete-conflicting-outputs',
         ], workingDirectory: projectRoot.path);
 

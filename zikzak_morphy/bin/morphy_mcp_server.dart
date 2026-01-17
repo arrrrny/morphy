@@ -521,23 +521,11 @@ class MorphyMcpServer {
           }
         }
 
-        // Build filter for all JSON serializable files
-        final buildFilters = jsonSerializableFiles
-            .map(
-              (file) =>
-                  '--build-filter=${p.relative(file, from: projectRoot.path)}',
-            )
-            .toList();
-
-        if (verbose) {
-          buffer.writeln('Build filters: ${buildFilters.join(", ")}');
-        }
-
+        // Run build_runner without filters to let it discover and process all files
         final buildResult = await Process.run('dart', [
           'run',
           'build_runner',
           'build',
-          ...buildFilters,
           '--delete-conflicting-outputs',
         ], workingDirectory: projectRoot.path);
 

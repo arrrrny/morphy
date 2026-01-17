@@ -15,7 +15,7 @@ import 'morphy_cli.dart';
 import 'morphy_json_parser.dart';
 import 'morphy_standalone_generator.dart';
 
-const String version = '2.9.0';
+const String version = '2.9.1';
 
 Future<void> main(List<String> arguments) async {
   final runner =

@@ -1,6 +1,6 @@
 name: zikzak_morphy
 description: A powerful code generation package for Dart/Flutter that provides clean class definitions with copyWith, JSON serialization, toString, equality, and inheritance support
-version: 2.9.0
+version: 2.9.1
 homepage: https://github.com/arrrrny/morphy
 
 environment:

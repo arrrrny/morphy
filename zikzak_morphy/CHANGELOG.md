@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.9.1] - 2025-01-17
+
+### Fixed
+- CLI now automatically runs `build_runner` after generating `.morphy.dart` files to ensure `.g.dart` files are created for JSON serialization
+- MCP server now properly runs `build_runner` to generate `.g.dart` files
+- Build cache clearing in rebuild script to ensure fresh builds
+
 ## [2.9.0] - 2025-01-17
 
 ### Added
