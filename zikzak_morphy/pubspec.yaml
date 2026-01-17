@@ -11,7 +11,7 @@ executables:
   morphy_mcp_server: morphy_mcp_server
 
 dependencies:
-  zikzak_morphy_annotation: ^2.9.0
+  zikzak_morphy_annotation: ^2.9.1
   analyzer: ^7.5.7
   build: ^2.5.4
   source_gen: ^2.0.0
