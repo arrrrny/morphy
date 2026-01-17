@@ -1,5 +1,7 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
+// ignore_for_file: type=lint, unnecessary_cast
+
 part of 'ex51_json_inheritance_generic_from_test.dart';
 
 // **************************************************************************

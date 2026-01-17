@@ -1,5 +1,7 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
+// ignore_for_file: type=lint, unnecessary_cast
+
 part of 'ex54_default_constructor_json_test.dart';
 
 // **************************************************************************

@@ -5,11 +5,13 @@ environment:
   sdk: ">=3.8.0 <4.0.0"
 
 dependencies:
-  zikzak_morphy_annotation: ^2.8.1
+  zikzak_morphy_annotation:
+    path: ../zikzak_morphy_annotation
   json_annotation: ^4.9.0
 
 dev_dependencies:
   test: ^1.26.2
   build_runner: ^2.5.4
-  zikzak_morphy: ^2.8.1
+  zikzak_morphy:
+    path: ../zikzak_morphy
   json_serializable: ^6.8.0

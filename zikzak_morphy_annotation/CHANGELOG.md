@@ -1,3 +1,41 @@
+# Changelog
+
+## [2.9.0] - 2025-01-17
+
+### Added
+- **CLI Tool** - Standalone command-line interface for faster code generation (2-4x faster than build_runner)
+  - `morphy generate` - Generate morphy code for annotated classes
+  - `morphy from-json` - Generate morphy entity from JSON file
+  - `morphy clean` - Remove generated .morphy.dart files
+  - `morphy analyze` - Analyze files for morphy annotations
+  - Watch mode with `--watch` flag
+- **MCP Server** - Model Context Protocol server for AI assistant integration
+  - `morphy_generate` - Generate morphy code
+  - `morphy_from_json` - Generate entity from JSON data
+  - `morphy_analyze` - Analyze files for annotations
+  - `morphy_clean` - Clean generated files
+- **JSON to Entity Generator** - Create morphy entities from JSON files
+  - Automatic type inference (String, int, double, bool, DateTime)
+  - Nullable fields using `?` suffix in field names (e.g., `"lastName?": "Doe"`)
+  - Nested object support (generates separate entity classes)
+  - List support for primitives and objects
+- **@JsonKey Support** - Full support for `@JsonKey` annotations on abstract getters
+  - `name` - Custom JSON key name
+  - `ignore` - Completely ignore the field
+  - `defaultValue` - Default value when field is missing
+  - `includeFromJson` - Include field when deserializing
+  - `includeToJson` - Include field when serializing
+  - `includeIfNull`, `required`, `toJson`, `fromJson`
+
+### Fixed
+- **@JsonKey on getters** - Fixed extraction of `@JsonKey` annotations from abstract class getters
+  - Previously only checked field metadata, now also checks getter metadata
+  - Enables proper JSON serialization with custom field names
+
+### Changed
+- Default include pattern changed to `lib/src/domain/entities/**.dart`
+- Version bumped to 2.9.0 across all packages and tools
+
 ## 2.8.1 - 2025-07-16
 
 * fixed warnings, cleaner output
@@ -103,4 +141,3 @@
 ### Fixed
 - Fixed constructor accessibility issue in cross-file entity extension
 - Updated changeTo, copyWith, and patchWith methods to use public constructors
-
