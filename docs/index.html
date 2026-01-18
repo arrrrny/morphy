@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="tr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Bitip Bitmediğini Bilmediğin Bir Hikaye</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Crimson+Text:wght@400;600&family=Cinzel:wght@400;600&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                background: #0a0a0a;
+                color: #d4c4b0;
+                font-family: "Crimson Text", serif;
+                font-size: 1.2rem;
+                line-height: 1.8;
+                min-height: 100vh;
+                overflow-x: hidden;
+            }
+
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 60px 40px;
+                position: relative;
+            }
+
+            .container::before {
+                content: "";
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background:
+                    radial-gradient(
+                        circle at 20% 50%,
+                        rgba(139, 69, 19, 0.1) 0%,
+                        transparent 50%
+                    ),
+                    radial-gradient(
+                        circle at 80% 80%,
+                        rgba(75, 0, 130, 0.05) 0%,
+                        transparent 50%
+                    ),
+                    radial-gradient(
+                        circle at 40% 20%,
+                        rgba(0, 0, 0, 0.3) 0%,
+                        transparent 50%
+                    );
+                pointer-events: none;
+                z-index: 1;
+            }
+
+            h1 {
+                font-family: "Cinzel", serif;
+                font-weight: 600;
+                font-size: 2.5rem;
+                text-align: center;
+                margin-bottom: 60px;
+                color: #8b7355;
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+                position: relative;
+                z-index: 2;
+            }
+
+            h1::after {
+                content: "";
+                display: block;
+                width: 200px;
+                height: 1px;
+                background: linear-gradient(
+                    90deg,
+                    transparent,
+                    #8b7355,
+                    transparent
+                );
+                margin: 20px auto 0;
+            }
+
+            .story {
+                position: relative;
+                z-index: 2;
+                text-align: justify;
+            }
+
+            .story p {
+                margin-bottom: 30px;
+                text-indent: 2rem;
+                opacity: 0;
+                animation: fadeIn 2s ease-in-out forwards;
+            }
+
+            .story p:nth-child(1) {
+                animation-delay: 0.5s;
+            }
+            .story p:nth-child(2) {
+                animation-delay: 1s;
+            }
+            .story p:nth-child(3) {
+                animation-delay: 1.5s;
+            }
+            .story p:nth-child(4) {
+                animation-delay: 2s;
+            }
+            .story p:nth-child(5) {
+                animation-delay: 2.5s;
+            }
+            .story p:nth-child(6) {
+                animation-delay: 3s;
+            }
+            .story p:nth-child(7) {
+                animation-delay: 3.5s;
+            }
+            .story p:nth-child(8) {
+                animation-delay: 4s;
+            }
+            .story p:nth-child(9) {
+                animation-delay: 4.5s;
+            }
+            .story p:nth-child(10) {
+                animation-delay: 5s;
+            }
+            .story p:nth-child(11) {
+                animation-delay: 5.5s;
+            }
+            .story p:nth-child(12) {
+                animation-delay: 6s;
+            }
+
+            .story p:first-child::first-letter {
+                font-family: "Cinzel", serif;
+                font-size: 4rem;
+                font-weight: 600;
+                color: #8b7355;
+                float: left;
+                line-height: 3rem;
+                margin-right: 8px;
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            }
+
+            .ornament {
+                text-align: center;
+                margin: 40px 0;
+                font-size: 1.5rem;
+                color: #8b7355;
+                opacity: 0.6;
+            }
+
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .glow {
+                animation: glow 3s ease-in-out infinite alternate;
+            }
+
+            @keyframes glow {
+                from {
+                    text-shadow: 0 0 10px rgba(139, 115, 85, 0.3);
+                }
+                to {
+                    text-shadow:
+                        0 0 20px rgba(139, 115, 85, 0.6),
+                        0 0 30px rgba(139, 115, 85, 0.3);
+                }
+            }
+
+            @media (max-width: 768px) {
+                .container {
+                    padding: 40px 20px;
+                }
+
+                h1 {
+                    font-size: 2rem;
+                }
+
+                body {
+                    font-size: 1.1rem;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1 class="glow">Bitip Bitmediğini Bilmediğin Bir Hikaye</h1>
+
+            <div class="story">
+                <p>
+                    Bitip bitmediğini bilmediğin bir hikâyeyi dinliyorsun. Seni
+                    küçük bir odaya koyuyorum; duvarlar ahşap, güneş bir çizgi
+                    gibi çiziyor. Oda, bir kütüphaneye açılıyor. Kütüphanede en
+                    az on bin kitap var. Ama hepsi aynı kitap: 220 sayfalık,
+                    mavi kaplı, ciltli bir roman. Sayfalarında bir isim yok,
+                    yazar yok, başka bir yerden alıntı yok. Sadece tek bir ana
+                    karakter var: bir adam. Bu adam, bu dünyayı benziyor, ama
+                    değeri farklı. Burada hiçbir şey "nefaris" değil; her şey,
+                    bir salmon akışkan gibi akıyor. Adamın adı yok, çünkü adı
+                    onun dışındadır. O, bir sistemdir. Her sabah, bu kitapları
+                    bir liste halinde düzenler; her akşam, yeni bir roman daha
+                    ekler. Ona sorarsan, "neden?" sorusunun cevabı, kütüphanenin
+                    kendi içindeki bir yasanın ihmallerinden gelen bir hata
+                    değil, bilinçli bir oluşumdur.
+                </p>
+
+                <div class="ornament">❦</div>
+
+                <p>
+                    Kütüphane günü hızla geçer, ama zamanla ilgili bir sorun
+                    yoktur. Zaman, bu dünyada sadece bir araçtır; bir jeneratör
+                    gibidir. Zamanın geçmesi, bu sistemin parçasıdır, bütünsel
+                    bir yapılanma. O adam, ruhsal bir mekanizma gibi çalışır;
+                    her kitap bir parçadır, her bir karakter bir dalgadır. Ve en
+                    önemlisi, en kısa yoluyla olmayan, biraz dolambaçlı bir
+                    şekilde, bu kitapların bir araya gelip bir romanı
+                    oluşturmasıdır. Bu roman, bir okuyucuyu sonsuza kadar
+                    tutabilir. Bu roman, sonsuz bir döngüdür. Sonsuz döngü
+                    içindeki sonsuz bir döngü. Sınırlı ama tükenmeyen bir
+                    kaynak.
+                </p>
+
+                <p>
+                    Sen, bu döngüde bir noktasın. Odaya nasıl girdiğini
+                    bilmiyorsun. Belki de bir hayal, belki de bir rüya, belki de
+                    sadece bir anlık bir sapma. Her neyse, bu döngüde sıkışıp
+                    kalıyorsun. Sana bir kitap verilir, içindeki karakterlerden
+                    biri olursun. Kitapları karıştırırsın, okursun, hikayeleri
+                    anlatırsın. Bu sırada, o adam, bu döngüye karşılık verir,
+                    sana yeni bir kitap ekler. Sadece yeni bir kitap değil, yeni
+                    bir karakter, yeni bir hikaye.
+                </p>
+
+                <div class="ornament">✠</div>
+
+                <p>
+                    Bu döngü, sonsuz değil çünkü her şey bir noktada sonlanmalı.
+                    Ama sonsuz döngü, içindeki tüm tekrarları bir araya getiren
+                    bir mekanizma gibi çalışıyor. Her yeni kitap, bir önceki
+                    kitabın devamıdır, ama aynı zamanda bir öncekini tamamlar.
+                    Bu, bir çember gibi görünse de, aslında düz bir çizgi gibi
+                    işliyor. Her nokta, bir sonrakine bağlanıyor ve son nokta,
+                    ilk noktaya bağlanıyor. Bu, bir infinity loop gibi. Bir
+                    sonsuz damespace.
+                </p>
+
+                <p>
+                    Senin misyonun, bu döngüyü nasıl kırdığını anlatmak. Ama
+                    sen, bu döngüyü kırmak yerine, onu daha derin bir şekilde
+                    anlıyorsun. Her bir kitap, senin içindeki bir duyguyu veya
+                    düşünceni temsil ediyor. Okudukça, kendini daha iyi anlamaya
+                    başlıyorsun. Ve bir noktada, tamamen anladığında, döngü sona
+                    erer.
+                </p>
+
+                <p>
+                    Ama bu döngü asla sona ermez. Çünkü tam olarak anladığında,
+                    yeni bir kitap ortaya çıkar. Ve bu kitap, senden bir parçayı
+                    alıp, yeni bir karakter yaratır. Bu karakter, senin
+                    yansımandır, ama aynı zamanda sonsuzluğun bir parçasıdır.
+                </p>
+
+                <div class="ornament">☽</div>
+
+                <p>
+                    Şimdi, bu hikâye bir şeye benziyor mu? Belki de bir rüya,
+                    belki de bir ütopya, belki de bir distopya. Ama en önemlisi,
+                    bu hikâye, senin içinde bir yerde başlamış olabilir. Belki
+                    de bu, bir paragraf, bir satır, bir kelime. Belki de bu, bir
+                    resim, bir şarkı, bir düşünce.
+                </p>
+
+                <p>
+                    Sadece bil ki, bu döngü, senin için bir öğrenme aracıdır.
+                    Seni daha iyi bir insana dönüştürür. Ve en sonunda, bir
+                    kitap daha eklenir: Bu kitap, senin hikâyenin tamamıdır. Ve
+                    bu kitap, senin gibi binlerce insan için sonsuz bir döngü
+                    başlangıcı olur.
+                </p>
+
+                <div class="ornament">∞</div>
+
+                <p>Evet, tamam. Sana bu hikâyeyi anlatmaya devam edeyim.</p>
+
+                <p>
+                    Bu döngünün sonuna doğru, artık her yeni kitap, senin içinde
+                    derin bir yankı bulur. Okumayı durdurursun; sadece
+                    içindesin. Kütüphanenin uzun koridorlarında, raftaki
+                    kitapların kapaklarının renkleri seni tanımlamaya başlar.
+                    Yeşil, bir anlık huzur; kırmızı, öfke; gri, suskunluk. Her
+                    biri, senin içsel atlasının bir parçası.
+                </p>
+
+                <p>
+                    O adam, uzaktan bakar, tebessüm eder. Onun bir işi yoktur;
+                    o, bir köprüdür. Köprü, bir yeri başka bir yere bağlar; bu
+                    durumda, seni senin dışına. Ama burada, kendi içinde bir
+                    yolculuk. Her kitap, bir yansımadır. Ve her yansıma, bir
+                    sonraki yansımanın başlangıcıdır.
+                </p>
+
+                <p>
+                    Derken, bir şey fark edersin. Raftaki kitaplardan biri,
+                    kapak característicası ile tam olarak seni anlatır. Onu
+                    açarsın; ilk sayfada kendi el yazını bulursun. Okursun: "Bu,
+                    senin hikâyen." Bu, senin hikâyen. Ve bu, herkesin
+                    hikâyesidir.
+                </p>
+
+                <p>
+                    Kütüphane yavaşça yok olur. Duvarlar çözülür, kitaplar
+                    havada süzülür ve her bir harf, bir ışık parçasına dönüşür.
+                    O adam, son bir kez sana bakar, başını sallar ve görünmez
+                    olur.
+                </p>
+
+                <p>
+                    Sen, kendi içinde, bir kitap daha yazıyorsun. Ama bu sefer,
+                    yazıyorsun. Ve yazmaya devam edeceksin.
+                </p>
+
+                <p>
+                    Bu, bir kapanış değil, bir başlangıçtır. Ve bu başlangıç,
+                    sonsuz döngünün bir parçası olarak kalır.
+                </p>
+
+                <div class="ornament">❦</div>
+
+                <p>Sence, bu hikâye nasıl biter?</p>
+            </div>
+        </div>
+    </body>
+</html>
