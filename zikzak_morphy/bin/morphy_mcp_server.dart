@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -43,30 +44,58 @@ class MorphyMcpServer {
       // Ignore errors in piped context
     }
 
-    // Process messages
-    await for (final line
-        in stdin.transform(utf8.decoder).transform(const LineSplitter())) {
-      if (line.isEmpty) continue;
+    // Set up the stream
+    final stream =
+        stdin.transform(utf8.decoder).transform(const LineSplitter());
 
-      try {
-        final request = jsonDecode(line) as Map<String, dynamic>;
-        final response = await handleRequest(request);
-        stdout.writeln(jsonEncode(response));
-        await stdout.flush();
-      } catch (e, stackTrace) {
-        stderr.writeln('Error processing request: $e\n$stackTrace');
-        final errorResponse = {
-          'jsonrpc': '2.0',
-          'error': {
-            'code': -32603,
-            'message': 'Internal error: ${e.toString()}',
-          },
-          'id': null,
-        };
-        stdout.writeln(jsonEncode(errorResponse));
-        await stdout.flush();
-      }
-    }
+    // Keep the process alive indefinitely
+    final keepAlive = Completer<void>();
+
+    // Start processing messages immediately
+    _processStream(stream).catchError((e) {
+      stderr.writeln('Message processor error: $e');
+    });
+
+    // Wait forever
+    await keepAlive.future;
+  }
+
+  /// Process stdin messages using stream subscription
+  Future<void> _processStream(Stream<String> stream) async {
+    final completer = Completer<void>();
+
+    final subscription = stream.listen(
+      (line) async {
+        if (line.isEmpty) return;
+
+        try {
+          final request = jsonDecode(line) as Map<String, dynamic>;
+          final response = await handleRequest(request);
+          stdout.writeln(jsonEncode(response));
+        } catch (e, stackTrace) {
+          stderr.writeln('Error processing request: $e\n$stackTrace');
+          final errorResponse = {
+            'jsonrpc': '2.0',
+            'error': {
+              'code': -32603,
+              'message': 'Internal error: ${e.toString()}',
+            },
+            'id': null,
+          };
+          stdout.writeln(jsonEncode(errorResponse));
+        }
+      },
+      onError: (e) {
+        stderr.writeln('Stream error: $e');
+      },
+      onDone: () {
+        // Stdin closed - keep process alive silently
+      },
+      cancelOnError: false,
+    );
+
+    // Wait forever
+    await completer.future;
   }
 
   /// Handle incoming JSON-RPC requests
