@@ -53,16 +53,21 @@ cd "$PACKAGE_DIR"
 dart pub get
 
 # Compile MCP server to kernel for faster startup
+# Note: Cannot use AOT (exe) compilation due to dart:mirrors dependency
 echo "🔨 Compiling morphy_mcp_server to kernel (precompiled)..."
-dart compile kernel bin/morphy_mcp_server.dart -o bin/morphy_mcp_server.dill
+mkdir -p "$PACKAGE_DIR/build"
+dart compile kernel bin/morphy_mcp_server.dart -o "$PACKAGE_DIR/build/morphy_mcp_server.dill"
 
 # Create the pub bin directory if it doesn't exist
 mkdir -p "$PUB_BIN"
 
-# Create custom wrapper scripts
-# This avoids the noisy "Downloading packages" output from dart pub global run
+# Activate the package globally so it persists across IDE restarts
+echo "🌍 Activating package globally..."
+cd "$PACKAGE_DIR"
+dart pub global activate --source=path .
 
-echo "📝 Creating wrapper scripts..."
+# Now create our custom wrappers (after activation to override pub's wrappers)
+echo "📝 Creating custom wrapper scripts..."
 
 # Create morphy wrapper (uses dart run for flexibility)
 cat > "$PUB_BIN/morphy" << 'WRAPPER_EOF'
@@ -80,7 +85,7 @@ chmod +x "$PUB_BIN/morphy"
 cat > "$PUB_BIN/morphy_mcp_server" << 'WRAPPER_EOF'
 #!/usr/bin/env bash
 # Morphy MCP Server wrapper - uses precompiled kernel for fast startup
-exec dart "PACKAGE_DIR_PLACEHOLDER/bin/morphy_mcp_server.dill" "$@"
+exec dart "PACKAGE_DIR_PLACEHOLDER/build/morphy_mcp_server.dill" "$@"
 WRAPPER_EOF
 
 # Replace placeholder with actual path
