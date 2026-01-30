@@ -71,7 +71,10 @@ class MorphyMcpServer {
         try {
           final request = jsonDecode(line) as Map<String, dynamic>;
           final response = await handleRequest(request);
-          stdout.writeln(jsonEncode(response));
+          // Only send response if it's not a notification (notifications have id == null)
+          if (response != null) {
+            stdout.writeln(jsonEncode(response));
+          }
         } catch (e, stackTrace) {
           stderr.writeln('Error processing request: $e\n$stackTrace');
           final errorResponse = {
@@ -99,7 +102,7 @@ class MorphyMcpServer {
   }
 
   /// Handle incoming JSON-RPC requests
-  Future<Map<String, dynamic>> handleRequest(
+  Future<Map<String, dynamic>?> handleRequest(
     Map<String, dynamic> request,
   ) async {
     final method = request['method'] as String?;
@@ -127,6 +130,10 @@ class MorphyMcpServer {
       case 'ping':
         return _success(id, {'pong': true});
       default:
+        // Don't respond to unknown notifications (id == null)
+        if (id == null) {
+          return null;
+        }
         return _error(id, -32601, 'Method not found: $method');
     }
   }
@@ -140,7 +147,6 @@ class MorphyMcpServer {
         'capabilities': {
           'tools': {'listChanged': true},
           'resources': {'subscribe': true, 'listChanged': true},
-          'prompts': {},
         },
         'serverInfo': {'name': serverName, 'version': serverVersion},
       },
